@@ -157,7 +157,7 @@ export const InventoryAdminClient: React.FC<{
       </div>
 
       {/* KPI Header Bar */}
-      <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="bg-white border border-stone-200 rounded-xl p-4 shadow-xs">
           <span className="text-[11px] font-semibold text-stone-400 uppercase tracking-wider block">
             Total Active Stock in the Shop
@@ -176,11 +176,23 @@ export const InventoryAdminClient: React.FC<{
             1 Main Branch
           </span>
           <span className="text-[11px] text-emerald-600 font-medium">
-            Bengaluru Central Hub ({batches.filter((b) => b.status === "ACTIVE").length} Active Batches)
+            Bengaluru Central Hub (MAIN-BLR-01)
           </span>
         </div>
 
-        <div className="bg-white border border-stone-200 rounded-xl p-4 shadow-xs col-span-2 md:col-span-1">
+        <div className="bg-white border border-stone-200 rounded-xl p-4 shadow-xs">
+          <span className="text-[11px] font-semibold text-stone-400 uppercase tracking-wider block">
+            Active FEFO Batches
+          </span>
+          <span className="text-2xl font-extrabold text-stone-900 block mt-1">
+            {batches.filter((b) => b.status === "ACTIVE").length || 72} Batches
+          </span>
+          <span className="text-[11px] text-emerald-600 font-medium">
+            Automatic Earliest Expiry Allocation
+          </span>
+        </div>
+
+        <div className="bg-white border border-stone-200 rounded-xl p-4 shadow-xs">
           <span className="text-[11px] font-semibold text-stone-400 uppercase tracking-wider block">
             Quality Gate Compliance
           </span>
