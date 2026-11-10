@@ -1,0 +1,737 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ----------------------------------------------------
+// Core Customer & Administration
+// ----------------------------------------------------
+
+model User {
+  id           String    @id @default(uuid())
+  email        String    @unique
+  phone        String?   @unique
+  passwordHash String
+  name         String
+  role         String    @default("CUSTOMER") // CUSTOMER, ADMIN, INVENTORY_MANAGER, QUALITY_MANAGER, PICKING_STAFF, DELIVERY_STAFF, FINANCE
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  addresses               Address[]
+  orders                  Order[]
+  householdProduceItems   HouseholdProduceItem[]
+  weeklyPlans             WeeklyPlan[]
+  perfectPicks            CustomerPerfectPick[]
+  harvestParticipations   GroupPurchaseParticipant[]
+  packagingDepositLedgers PackagingDepositLedger[]
+  packagingReturnRequests PackagingReturnRequest[]
+  batchFeedbacks          BatchQualityFeedback[]
+  pickingTasks            PickingTask[]            @relation("StaffPickingTasks")
+  packingTasks            PackingTask[]            @relation("StaffPackingTasks")
+  inspections             QualityInspection[]      @relation("StaffInspections")
+  investigations          QualityInvestigation[]   @relation("StaffInvestigations")
+}
+
+model Address {
+  id            String   @id @default(uuid())
+  userId        String
+  label         String   @default("Home") // Home, Work, Other
+  recipientName String
+  phone         String
+  streetLine1   String
+  streetLine2   String?
+  locality      String
+  city          String
+  state         String
+  pincode       String
+  isDefault     Boolean  @default(false)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  user                  User                       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  orders                Order[]
+  harvestParticipations GroupPurchaseParticipant[]
+}
+
+// ----------------------------------------------------
+// Produce Catalog & Regional Varieties
+// ----------------------------------------------------
+
+model Category {
+  id               String    @id @default(uuid())
+  name             String
+  slug             String    @unique
+  description      String?
+  icon             String?
+  parentId         String?
+  displayOrder     Int       @default(0)
+  isLeafyVegetable Boolean   @default(false)
+  active           Boolean   @default(true)
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  products Product[]
+}
+
+model Product {
+  id                String   @id @default(uuid())
+  categoryId        String
+  title             String
+  slug              String   @unique
+  scientificName    String?
+  regionalNamesJson String   @default("{}") // JSON: { "kannada": "...", "tamil": "...", "hindi": "...", "telugu": "..." }
+  description       String
+  originRegion      String?  // e.g. "Mysuru", "Kolar", "Ooty", "Ratnagiri"
+  isSeasonal        Boolean  @default(false)
+  seasonMonthsJson  String   @default("[]") // JSON: ["Apr", "May", "Jun"]
+  featuredImageUrl  String
+  galleryUrlsJson   String   @default("[]") // JSON string array
+  active            Boolean  @default(true)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  category                Category                 @relation(fields: [categoryId], references: [id])
+  skus                    Sku[]
+  regionalDetail          RegionalProduceDetail?
+  storageGuide            StorageGuide?
+  recipeIngredients       RecipeIngredient[]
+  householdItems          HouseholdProduceItem[]
+  perfectPicks            CustomerPerfectPick[]
+  marketPriceObservations MarketPriceObservation[]
+  retailPriceHistories    RetailPriceHistory[]
+}
+
+model Sku {
+  id               String   @id @default(uuid())
+  productId        String
+  skuCode          String   @unique // e.g. "SKU-MANGO-ALPHANSO-500G"
+  unitType         String   @default("GRAMS") // GRAMS, KILOGRAMS, PIECES, BUNCH
+  packageSizeGrams Int      // e.g. 500 for 500g, 1000 for 1kg
+  mrpPaise         Int      // Standard integer Paise (no float drift)
+  sellingPricePaise Int     // Current retail selling price in Paise
+  taxRatePercent   Int      @default(0) // Usually 0% for raw fresh produce
+  active           Boolean  @default(true)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  product               Product                @relation(fields: [productId], references: [id], onDelete: Cascade)
+  inventoryBatches      InventoryBatch[]
+  orderItems            OrderItem[]
+  stockLedgerEntries    StockLedgerEntry[]
+  stockReservations     StockReservation[]
+  weeklyPlanItems       WeeklyPlanItem[]
+  qualityAlerts         QualityAlert[]
+  retailPriceHistories  RetailPriceHistory[]
+  recipeIngredients     RecipeIngredient[]
+}
+
+model RegionalProduceDetail {
+  id                     String   @id @default(uuid())
+  productId              String   @unique
+  nativeState            String   // e.g. "Karnataka", "Maharashtra", "Tamil Nadu"
+  harvestSeasonText      String
+  flavorProfile          String
+  textureProfile         String
+  culinaryTradition      String
+  folkUseTips            String
+  createdAt              DateTime @default(now())
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+}
+
+model StorageGuide {
+  id                   String   @id @default(uuid())
+  productId            String   @unique
+  idealStorageMethod   String   @default("REFRIGERATE") // REFRIGERATE, ROOM_TEMPERATURE, COOL_DARK_PLACE
+  optimalTempCelsius   String   @default("4-8°C")
+  expectedShelfLifeDays Int     @default(5)
+  ethyleneProducer     Boolean  @default(false)
+  ethyleneSensitive    Boolean  @default(false)
+  prepTip              String
+  createdAt            DateTime @default(now())
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+}
+
+// ----------------------------------------------------
+// Supply Chain & Perishable Inventory Batches
+// ----------------------------------------------------
+
+model Supplier {
+  id          String   @id @default(uuid())
+  name        String
+  code        String   @unique
+  contactName String
+  phone       String
+  email       String?
+  district    String
+  state       String
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  purchaseReceipts PurchaseReceipt[]
+  inventoryBatches InventoryBatch[]
+}
+
+model InventoryLocation {
+  id        String   @id @default(uuid())
+  name      String
+  code      String   @unique // e.g. "BLR-DARKSTORE-01"
+  pincode   String
+  address   String
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  purchaseReceipts PurchaseReceipt[]
+  inventoryBatches InventoryBatch[]
+}
+
+model PurchaseReceipt {
+  id          String   @id @default(uuid())
+  supplierId  String
+  locationId  String
+  invoiceNo   String
+  receivedAt  DateTime @default(now())
+  totalPaise  Int
+  status      String   @default("COMPLETED")
+
+  supplier  Supplier          @relation(fields: [supplierId], references: [id])
+  location  InventoryLocation @relation(fields: [locationId], references: [id])
+  batches   InventoryBatch[]
+}
+
+model InventoryBatch {
+  id                       String   @id @default(uuid())
+  batchNumber              String   @unique // e.g. "BATCH-20261104-TOM-01"
+  skuId                    String
+  supplierId               String
+  locationId               String
+  purchaseReceiptId        String?
+  receivedDate             DateTime @default(now())
+  harvestDate              DateTime?
+  bestBeforeDate           DateTime
+  initialQuantityGrams     Int
+  availableQuantityGrams   Int
+  reservedQuantityGrams    Int      @default(0)
+  damagedQuantityGrams     Int      @default(0)
+  quarantinedQuantityGrams Int      @default(0)
+  unitCostPaise            Int
+  readinessStage           String   @default("READY_TO_EAT") // RAW, TURNING, READY_TO_EAT, PEAK, OVERRIPE
+  ripenessWindowStart      DateTime?
+  ripenessWindowEnd        DateTime?
+  status                   String   @default("ACTIVE") // ACTIVE, QUARANTINED, DEPLETED, EXPIRED
+  createdAt                DateTime @default(now())
+  updatedAt                DateTime @updatedAt
+
+  sku                Sku                     @relation(fields: [skuId], references: [id])
+  supplier           Supplier                @relation(fields: [supplierId], references: [id])
+  location           InventoryLocation       @relation(fields: [locationId], references: [id])
+  purchaseReceipt    PurchaseReceipt?        @relation(fields: [purchaseReceiptId], references: [id])
+  inspections        QualityInspection[]
+  stockLedgerEntries StockLedgerEntry[]
+  stockReservations  StockReservation[]
+  allocatedItems     OrderItem[]
+  customerFeedbacks  BatchQualityFeedback[]
+  qualityAlerts      QualityAlert[]
+}
+
+model QualityInspection {
+  id                    String   @id @default(uuid())
+  batchId               String
+  inspectorId           String
+  inspectionType        String   @default("INWARD_GATE") // INWARD_GATE, DAILY_ROUTINE, POST_ALERT
+  overallGrade          String   @default("GRADE_A_PREMIUM") // GRADE_A_PREMIUM, GRADE_B_STANDARD, REJECTED
+  firmnessScore         Int      @default(5) // 1-5
+  blemishScore          Int      @default(5) // 1-5
+  notes                 String?
+  photosJson            String   @default("[]")
+  createdAt             DateTime @default(now())
+
+  batch     InventoryBatch @relation(fields: [batchId], references: [id], onDelete: Cascade)
+  inspector User           @relation("StaffInspections", fields: [inspectorId], references: [id])
+}
+
+model StockLedgerEntry {
+  id                 String   @id @default(uuid())
+  batchId            String
+  skuId              String
+  entryType          String   // PROCUREMENT, ORDER_RESERVATION, ORDER_FULFILLMENT, RESERVATION_RELEASE, SPOILAGE_WRITE_OFF, QUARANTINE_HOLD, MANUAL_AUDIT
+  quantityDeltaGrams Int
+  balanceAfterGrams  Int
+  referenceType      String?  // ORDER, CAMPAIGN, AUDIT
+  referenceId        String?
+  notes              String?
+  createdAt          DateTime @default(now())
+
+  batch InventoryBatch @relation(fields: [batchId], references: [id])
+  sku   Sku            @relation(fields: [skuId], references: [id])
+}
+
+model StockReservation {
+  id             String   @id @default(uuid())
+  orderId        String?
+  cartSessionId  String?
+  skuId          String
+  batchId        String
+  quantityGrams  Int
+  status         String   @default("ACTIVE") // ACTIVE, COMMITTED, RELEASED, EXPIRED
+  expiresAt      DateTime
+  createdAt      DateTime @default(now())
+
+  batch InventoryBatch @relation(fields: [batchId], references: [id])
+  sku   Sku            @relation(fields: [skuId], references: [id])
+}
+
+// ----------------------------------------------------
+// Orders, Checkout & Fulfillment
+// ----------------------------------------------------
+
+model DeliveryZone {
+  id            String   @id @default(uuid())
+  name          String
+  pincodesJson  String   // JSON array of serviced pincodes e.g. ["560001", "560002"]
+  deliveryFeePaise Int   @default(3000) // 30 INR
+  minOrderPaise    Int   @default(19900) // 199 INR
+  active        Boolean  @default(true)
+
+  deliverySlots DeliverySlot[]
+}
+
+model DeliverySlot {
+  id                  String   @id @default(uuid())
+  zoneId              String
+  name                String   // e.g. "Morning Slot (7 AM - 10 AM)"
+  startTime           String   // e.g. "07:00"
+  endTime             String   // e.g. "10:00"
+  cutoffHoursBefore   Int      @default(2)
+  maxCapacityOrders   Int      @default(50)
+  active              Boolean  @default(true)
+
+  zone   DeliveryZone @relation(fields: [zoneId], references: [id])
+  orders Order[]
+}
+
+model Order {
+  id                     String   @id @default(uuid())
+  orderNumber            String   @unique // e.g. "FH-2026-89412"
+  userId                 String
+  addressId              String?
+  addressSnapshotJson    String   // Snapshot of address at order time
+  deliverySlotId         String
+  deliveryDate           DateTime
+  status                 String   @default("CONFIRMED") // PENDING_PAYMENT, CONFIRMED, ACCEPTED, PICKING, PACKING, PACKED, OUT_FOR_DELIVERY, DELIVERED, CANCELLED, PARTIALLY_FULFILLED
+  paymentStatus          String   @default("UNPAID") // UNPAID, AUTHORIZED, PAID, REFUNDED, FAILED
+  subtotalPaise          Int
+  packagingDepositPaise  Int      @default(0)
+  deliveryFeePaise       Int      @default(0)
+  discountPaise          Int      @default(0)
+  totalPaise             Int
+  idempotencyKey         String?  @unique
+  cancellationReason     String?
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
+
+  user                    User                     @relation(fields: [userId], references: [id])
+  address                 Address?                 @relation(fields: [addressId], references: [id])
+  deliverySlot            DeliverySlot             @relation(fields: [deliverySlotId], references: [id])
+  items                   OrderItem[]
+  payments                Payment[]
+  statusHistory           OrderStatusHistory[]
+  pickingTask             PickingTask?
+  packingTask             PackingTask?
+  packagingDepositLedgers PackagingDepositLedger[]
+}
+
+model OrderItem {
+  id                        String   @id @default(uuid())
+  orderId                   String
+  skuId                     String
+  allocatedBatchId          String?
+  productNameSnapshot       String
+  skuCodeSnapshot           String
+  unitTypeSnapshot          String
+  packageSizeSnapshotGrams  Int
+  unitPricePaise            Int
+  quantity                  Int
+  totalPricePaise           Int
+  perfectPickSnapshotJson   String?  // Saved firmness/ripeness preference snapshot
+  freshnessMatchDateSnapshot String? // E.g. "2026-11-06" if selected via matchmaker
+
+  order           Order                  @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  sku             Sku                    @relation(fields: [skuId], references: [id])
+  allocatedBatch  InventoryBatch?        @relation(fields: [allocatedBatchId], references: [id])
+  qualityFeedback BatchQualityFeedback?
+}
+
+model OrderStatusHistory {
+  id          String   @id @default(uuid())
+  orderId     String
+  fromStatus  String
+  toStatus    String
+  reason      String?
+  changedBy   String   @default("SYSTEM")
+  createdAt   DateTime @default(now())
+
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+}
+
+model Payment {
+  id                String   @id @default(uuid())
+  orderId           String
+  gateway           String   @default("RAZORPAY") // RAZORPAY, CASH_ON_DELIVERY, MOCK_SANDBOX
+  gatewayOrderId    String?
+  gatewayPaymentId  String?
+  gatewaySignature  String?
+  amountPaise       Int
+  currency          String   @default("INR")
+  status            String   @default("INITIATED") // INITIATED, SUCCESS, FAILED, REFUNDED
+  idempotencyKey    String?
+  rawPayloadJson    String?
+  createdAt         DateTime @default(now())
+
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+}
+
+model PickingTask {
+  id              String    @id @default(uuid())
+  orderId         String    @unique
+  assignedStaffId String?
+  status          String    @default("PENDING") // PENDING, IN_PROGRESS, COMPLETED, FLAGGED
+  pickerNotes     String?
+  startedAt       DateTime?
+  completedAt     DateTime?
+
+  order         Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  assignedStaff User? @relation("StaffPickingTasks", fields: [assignedStaffId], references: [id])
+}
+
+model PackingTask {
+  id                 String    @id @default(uuid())
+  orderId            String    @unique
+  assignedStaffId    String?
+  status             String    @default("PENDING") // PENDING, IN_PROGRESS, COMPLETED
+  packagingAssetCodes String   @default("[]") // JSON string array of scanned QR codes
+  completedAt        DateTime?
+
+  order         Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  assignedStaff User? @relation("StaffPackingTasks", fields: [assignedStaffId], references: [id])
+}
+
+// ----------------------------------------------------
+// Signature Feature 2: My Fridge Intelligence
+// ----------------------------------------------------
+
+model HouseholdProduceItem {
+  id                  String   @id @default(uuid())
+  userId              String
+  productId           String?
+  customName          String
+  quantityGrams       Int
+  purchasedDate       DateTime @default(now())
+  estimatedExpiryDate DateTime
+  status              String   @default("IN_FRIDGE") // IN_FRIDGE, CONSUMED, DISCARDED
+  discardReason       String?  // SPOILED, OVERCOOKED, FORGOTTEN
+  fromOrderId         String?
+  notes               String?
+  updatedAt           DateTime @updatedAt
+
+  user               User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  product            Product?           @relation(fields: [productId], references: [id])
+  consumptionEvents  ConsumptionEvent[]
+}
+
+model ConsumptionEvent {
+  id                     String   @id @default(uuid())
+  householdProduceItemId String
+  quantityConsumedGrams  Int
+  consumedDate           DateTime @default(now())
+
+  householdItem HouseholdProduceItem @relation(fields: [householdProduceItemId], references: [id], onDelete: Cascade)
+}
+
+// ----------------------------------------------------
+// Signature Feature 3: Seven-Day Fresh Plan
+// ----------------------------------------------------
+
+model Recipe {
+  id              String   @id @default(uuid())
+  title           String
+  slug            String   @unique
+  mealCategory    String   // BREAKFAST, LUNCH, DINNER, SNACK
+  prepTimeMinutes Int
+  serves          Int      @default(2)
+  instructions    String
+  dietType        String   @default("VEGETARIAN") // VEGETARIAN, VEGAN, JAIN
+  imageUrl        String?
+  createdAt       DateTime @default(now())
+
+  ingredients RecipeIngredient[]
+}
+
+model RecipeIngredient {
+  id            String @id @default(uuid())
+  recipeId      String
+  productId     String
+  skuId         String?
+  quantityGrams Int
+  isMandatory   Boolean @default(true)
+
+  recipe  Recipe   @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+  product Product  @relation(fields: [productId], references: [id])
+  sku     Sku?     @relation(fields: [skuId], references: [id])
+}
+
+model WeeklyPlan {
+  id                String   @id @default(uuid())
+  userId            String
+  startDate         DateTime
+  householdSize     Int      @default(2)
+  targetBudgetPaise Int      @default(150000) // 1500 INR
+  status            String   @default("ACTIVE") // ACTIVE, ARCHIVED
+  createdAt         DateTime @default(now())
+
+  user  User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  items WeeklyPlanItem[]
+}
+
+model WeeklyPlanItem {
+  id                   String   @id @default(uuid())
+  weeklyPlanId         String
+  dayNumber            Int      // 1 to 7
+  mealCategory         String   // BREAKFAST, LUNCH, DINNER
+  recipeTitle          String
+  skuId                String
+  requiredQuantityGrams Int
+  inFridgeStatus       Boolean  @default(false)
+  addedToCart          Boolean  @default(false)
+
+  weeklyPlan WeeklyPlan @relation(fields: [weeklyPlanId], references: [id], onDelete: Cascade)
+  sku        Sku        @relation(fields: [skuId], references: [id])
+}
+
+// ----------------------------------------------------
+// Signature Feature 4: Community Harvest Drops
+// ----------------------------------------------------
+
+model HarvestCampaign {
+  id                        String    @id @default(uuid())
+  title                     String
+  slug                      String    @unique
+  farmName                  String
+  location                  String
+  harvestDate               DateTime
+  deliveryWindowStart       DateTime
+  deliveryWindowEnd         DateTime
+  targetGrams               Int
+  currentGrams              Int       @default(0)
+  unitPricePaise            Int       // Price per unit (e.g. per 1kg in Paise)
+  benchmarkRetailPricePaise Int       // Retail comparison price
+  minHouseholdLimit         Int       @default(10)
+  maxHouseholdLimit         Int       @default(200)
+  deadlineAt                DateTime
+  imageUrl                  String
+  description               String
+  status                    String    @default("OPEN") // DRAFT, OPEN, NEAR_TARGET, TARGET_REACHED, CONFIRMED, FULFILLMENT, DELIVERED, CANCELLED, REFUNDED
+  createdAt                 DateTime  @default(now())
+  updatedAt                 DateTime  @updatedAt
+
+  participants GroupPurchaseParticipant[]
+}
+
+model GroupPurchaseParticipant {
+  id                String   @id @default(uuid())
+  campaignId        String
+  userId            String
+  addressId         String
+  quantityGrams     Int
+  totalAmountPaise  Int
+  paymentHoldStatus String   @default("AUTHORIZED") // PENDING, AUTHORIZED, SETTLED, RELEASED
+  createdAt         DateTime @default(now())
+
+  campaign HarvestCampaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  user     User            @relation(fields: [userId], references: [id])
+  address  Address         @relation(fields: [addressId], references: [id])
+}
+
+// ----------------------------------------------------
+// Signature Feature 6: My Perfect Pick
+// ----------------------------------------------------
+
+model CustomerPerfectPick {
+  id                  String   @id @default(uuid())
+  userId              String
+  productId           String
+  preferredFirmness   String   @default("ANY") // CRISP, MEDIUM, SOFT, ANY
+  preferredRipeness   String   @default("ANY") // RAW_FOR_COOKING, TURNING, READY_TO_EAT, ANY
+  preferredSize       String   @default("ANY") // SMALL, MEDIUM, LARGE, ANY
+  specialInstructions String?
+  updatedAt           DateTime @updatedAt
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, productId])
+}
+
+// ----------------------------------------------------
+// Signature Feature 7: Market Pulse
+// ----------------------------------------------------
+
+model MarketPriceSource {
+  id         String   @id @default(uuid())
+  sourceName String   // e.g. "Agmarknet Mandi Bangalore"
+  location   String   // e.g. "Yeshwanthpur APMC"
+  state      String   // e.g. "Karnataka"
+  active     Boolean  @default(true)
+  createdAt  DateTime @default(now())
+
+  observations MarketPriceObservation[]
+}
+
+model MarketPriceObservation {
+  id                              String   @id @default(uuid())
+  sourceId                        String
+  productId                       String
+  wholesaleBenchmarkPricePaisePerKg Int
+  observationDate                 DateTime @default(now())
+  verifiedBy                      String   @default("GOVT_AGMARKNET_PORTAL")
+
+  source  MarketPriceSource @relation(fields: [sourceId], references: [id])
+  product Product           @relation(fields: [productId], references: [id])
+}
+
+model RetailPriceHistory {
+  id              String   @id @default(uuid())
+  productId       String
+  skuId           String
+  pricePaise      Int
+  effectiveDate   DateTime @default(now())
+  reasonForChange String?  // e.g. "Monsoon supply shortage in Kolar district"
+
+  product Product @relation(fields: [productId], references: [id])
+  sku     Sku     @relation(fields: [skuId], references: [id])
+}
+
+// ----------------------------------------------------
+// Signature Feature 8: Return & Reuse Packaging
+// ----------------------------------------------------
+
+model PackagingType {
+  id           String   @id @default(uuid())
+  name         String   // e.g. "Fresh Harvest Crates - Medium (5kg)"
+  code         String   @unique // CRATE_MEDIUM
+  depositPaise Int      @default(10000) // 100 INR deposit
+  maxReuses    Int      @default(100)
+  active       Boolean  @default(true)
+
+  assets PackagingAsset[]
+}
+
+model PackagingAsset {
+  id             String   @id @default(uuid())
+  packagingTypeId String
+  assetCode      String   @unique // e.g. "FH-CRT-0042"
+  qrCodePayload  String   @unique // Encrypted or signed QR token
+  status         String   @default("IN_WAREHOUSE") // IN_WAREHOUSE, DISPATCHED_TO_CUSTOMER, RETURN_REQUESTED, RETURNED_COLLECTED, SANITIZED, DAMAGED_RETIRED
+  totalCycleCount Int     @default(0)
+  createdAt      DateTime @default(now())
+
+  packagingType   PackagingType            @relation(fields: [packagingTypeId], references: [id])
+  depositLedgers  PackagingDepositLedger[]
+  returnRequests  PackagingReturnRequest[]
+}
+
+model PackagingDepositLedger {
+  id                 String    @id @default(uuid())
+  userId             String
+  orderId            String
+  packagingAssetId   String
+  depositAmountPaise Int
+  status             String    @default("CHARGED") // CHARGED, REFUNDED_TO_SOURCE, REFUNDED_TO_CREDIT, FORFEITED
+  chargedAt          DateTime  @default(now())
+  refundedAt         DateTime?
+
+  user           User           @relation(fields: [userId], references: [id])
+  order          Order          @relation(fields: [orderId], references: [id])
+  packagingAsset PackagingAsset @relation(fields: [packagingAssetId], references: [id])
+}
+
+model PackagingReturnRequest {
+  id               String    @id @default(uuid())
+  userId           String
+  packagingAssetId String
+  status           String    @default("REQUESTED") // REQUESTED, PICKUP_SCHEDULED, COLLECTED, INSPECTED_PASSED, FAILED_DAMAGED
+  requestedAt      DateTime  @default(now())
+  collectedAt      DateTime?
+
+  user           User           @relation(fields: [userId], references: [id])
+  packagingAsset PackagingAsset @relation(fields: [packagingAssetId], references: [id])
+}
+
+// ----------------------------------------------------
+// Signature Feature 9: Batch Guardian
+// ----------------------------------------------------
+
+model BatchQualityFeedback {
+  id              String   @id @default(uuid())
+  batchId         String
+  orderItemId     String   @unique
+  userId          String
+  freshnessRating Int      @default(5) // 1 to 5
+  firmnessRating  Int      @default(5) // 1 to 5
+  damagePresent   Boolean  @default(false)
+  defectCategory  String?  // BRUISED, OVERRIPE, PEST_DAMAGE, MOULD_ROT, INCORRECT_SIZE
+  comments        String?
+  photoUrlsJson   String   @default("[]")
+  createdAt       DateTime @default(now())
+
+  batch     InventoryBatch @relation(fields: [batchId], references: [id])
+  orderItem OrderItem      @relation(fields: [orderItemId], references: [id])
+  user      User           @relation(fields: [userId], references: [id])
+}
+
+model QualityAlert {
+  id                      String   @id @default(uuid())
+  batchId                 String
+  skuId                   String
+  severity                String   @default("MEDIUM") // LOW, MEDIUM, CRITICAL
+  complaintThresholdCount Int      @default(3)
+  currentComplaints       Int      @default(1)
+  triggerReason           String
+  status                  String   @default("OPEN") // OPEN, UNDER_INVESTIGATION, QUARANTINED, CLEARED
+  createdAt               DateTime @default(now())
+
+  batch         InventoryBatch         @relation(fields: [batchId], references: [id])
+  sku           Sku                    @relation(fields: [skuId], references: [id])
+  investigation QualityInvestigation?
+}
+
+model QualityInvestigation {
+  id                       String    @id @default(uuid())
+  qualityAlertId           String    @unique
+  inspectorId              String
+  physicalInspectionNotes String
+  actionTaken              String    @default("BATCH_QUARANTINED") // BATCH_QUARANTINED, PRICE_DOWNGRADED, DISCARDED, CLEARED_FALSE_ALARM
+  completedAt              DateTime?
+
+  alert     QualityAlert @relation(fields: [qualityAlertId], references: [id], onDelete: Cascade)
+  inspector User         @relation("StaffInvestigations", fields: [inspectorId], references: [id])
+}
+
+// ----------------------------------------------------
+// Business Configuration Store
+// ----------------------------------------------------
+
+model BusinessSetting {
+  id          String   @id @default(uuid())
+  key         String   @unique
+  value       String
+  description String?
+  updatedAt   DateTime @updatedAt
+}
+

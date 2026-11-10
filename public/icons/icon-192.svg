@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192" width="192" height="192">
+  <rect width="192" height="192" rx="40" fill="#1b4332"/>
+  <circle cx="96" cy="96" r="70" fill="#2d6a4f"/>
+  <path d="M96 45 C120 45, 145 70, 145 98 C145 125, 122 147, 96 147 C70 147, 47 125, 47 98 C47 70, 72 45, 96 45 Z" fill="#52b788"/>
+  <path d="M96 35 C96 35, 105 25, 120 28 C120 40, 108 46, 96 45 Z" fill="#d8f3dc"/>
+  <path d="M85 70 Q96 55 107 70 Q118 85 96 125 Q74 85 85 70 Z" fill="#ffffff" opacity="0.9"/>
+  <text x="96" y="165" font-family="system-ui, -apple-system, sans-serif" font-size="14" font-weight="900" fill="#d8f3dc" text-anchor="middle" letter-spacing="1">FRESH HARVEST</text>
+</svg>
+

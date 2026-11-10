@@ -1,0 +1,30 @@
+{
+  "name": "Fresh Harvest | Fresh Fruits & Vegetables",
+  "short_name": "Fresh Harvest",
+  "description": "Commercial e-commerce platform dedicated exclusively to fresh fruits and vegetables.",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#fbf9f5",
+  "theme_color": "#1b4332",
+  "icons": [
+    {
+      "src": "/icons/icon-192.svg",
+      "sizes": "192x192",
+      "type": "image/svg+xml"
+    },
+    {
+      "src": "/icons/icon-512.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml"
+    },
+    {
+      "src": "/icons/maskable.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    }
+  ],
+  "categories": ["shopping", "food", "lifestyle"]
+}
+
