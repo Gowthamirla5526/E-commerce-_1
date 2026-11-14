@@ -1,5 +1,5 @@
-// Fresh Harvest Service Worker v1
-const CACHE_NAME = "fresh-harvest-cache-v1";
+// Fresh Harvest Service Worker v2
+const CACHE_NAME = "fresh-harvest-cache-v2";
 const OFFLINE_URL = "/offline";
 
 const PRECACHE_RESOURCES = [
@@ -46,6 +46,11 @@ self.addEventListener("fetch", (event) => {
 
   // Bypass non-GET requests (e.g. POST orders, PATCH items)
   if (request.method !== "GET") {
+    return;
+  }
+
+  // Never intercept cross-origin requests (e.g. Unsplash, CDNs) to ensure direct loading
+  if (url.origin !== self.location.origin) {
     return;
   }
 

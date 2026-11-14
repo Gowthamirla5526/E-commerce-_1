@@ -116,7 +116,7 @@ export const CategoryListing: React.FC<CategoryListingProps> = ({
 
         <div className="flex items-center gap-2 bg-[#d8f3dc] px-3.5 py-1.5 rounded-xl border border-[#b7e4c7] text-xs font-semibold text-[#1b4332] shrink-0 self-start md:self-auto">
           <ShieldCheck className="w-4 h-4 text-[#2d6a4f]" />
-          <span>Indiranagar Darkstore • Morning Inwarded</span>
+          <span>Main Branch (Bengaluru Central Hub) • Morning Inwarded</span>
         </div>
       </div>
 

@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { Plus, Minus, Star, Lock } from "lucide-react";
@@ -46,6 +46,8 @@ export const ProductCard: React.FC<ProductCardProps> = ({
 }) => {
   const { items, addItem, updateQuantity } = useCart();
   const { t, translateProduceTitle } = useLanguage();
+  const [imgSrc, setImgSrc] = useState(featuredImageUrl);
+  const [hasError, setHasError] = useState(false);
 
   const cartItem = items.find((i) => i.skuId === sku.id);
   const quantity = cartItem ? cartItem.quantity : 0;
@@ -101,10 +103,12 @@ export const ProductCard: React.FC<ProductCardProps> = ({
         <div className="relative aspect-4/3 w-full bg-white rounded-2xl overflow-hidden border border-stone-200/80 shadow-inner flex items-center justify-center">
           <Link href={`/product/${slug}`} className="w-full h-full relative block">
             <Image
-              src={featuredImageUrl}
+              src={hasError ? "/images/produce-placeholder.svg" : imgSrc}
               alt={title}
               fill
+              unoptimized
               loading="lazy"
+              onError={() => setHasError(true)}
               className="object-cover group-hover:scale-105 transition-transform duration-300"
               sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 20vw"
             />

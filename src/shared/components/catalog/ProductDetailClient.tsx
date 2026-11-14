@@ -79,6 +79,7 @@ export const ProductDetailClient: React.FC<{ product: SerializedProductDetail }>
 }) => {
   const { items, addItem, updateQuantity } = useCart();
   const [selectedSkuIndex, setSelectedSkuIndex] = useState(0);
+  const [hasError, setHasError] = useState(false);
 
   const activeSku = product.skus[selectedSkuIndex] || product.skus[0];
   const cartItem = items.find((i) => i.skuId === activeSku?.id);
@@ -133,10 +134,12 @@ export const ProductDetailClient: React.FC<{ product: SerializedProductDetail }>
         <div className="lg:col-span-6 space-y-4">
           <div className="relative aspect-4/3 w-full bg-[#f4f1ea] rounded-3xl overflow-hidden border border-[#e8e3d9] shadow-sm">
             <Image
-              src={product.featuredImageUrl}
+              src={hasError ? "/images/produce-placeholder.svg" : product.featuredImageUrl}
               alt={product.title}
               fill
+              unoptimized
               priority
+              onError={() => setHasError(true)}
               className="object-cover"
               sizes="(max-width: 1024px) 100vw, 50vw"
             />

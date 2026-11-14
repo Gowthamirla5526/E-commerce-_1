@@ -108,9 +108,10 @@ export const CartDrawer: React.FC = () => {
                 >
                   <div className="relative w-16 h-16 rounded-lg bg-[#f4f1ea] overflow-hidden shrink-0">
                     <Image
-                      src={item.imageUrl}
+                      src={item.imageUrl || "/images/produce-placeholder.svg"}
                       alt={item.title}
                       fill
+                      unoptimized
                       className="object-cover"
                     />
                   </div>

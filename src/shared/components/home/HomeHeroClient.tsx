@@ -85,6 +85,7 @@ export const HomeHeroClient: React.FC<HomeHeroClientProps> = ({
                 alt="Fresh handpicked organic fruits and vegetables basket"
                 fill
                 priority
+                unoptimized
                 className="object-cover group-hover:scale-105 transition-transform duration-500"
                 sizes="(max-width: 1024px) 100vw, 40vw"
               />
@@ -101,9 +102,10 @@ export const HomeHeroClient: React.FC<HomeHeroClientProps> = ({
                   <div className="flex items-center gap-3">
                     <div className="relative w-12 h-12 rounded-lg bg-[#fefce8] shrink-0 overflow-hidden p-1 border border-amber-200">
                       <Image
-                        src={heroFeaturedProduct.featuredImageUrl}
+                        src={heroFeaturedProduct.featuredImageUrl || "/images/produce-placeholder.svg"}
                         alt={heroFeaturedProduct.title}
                         fill
+                        unoptimized
                         className="object-contain"
                       />
                     </div>

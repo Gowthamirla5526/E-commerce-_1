@@ -11,46 +11,41 @@ const securityHeaders = [
     key: "X-Content-Type-Options",
     value: "nosniff",
   },
-  // 3. Strict Referrer Policy (matches Flipkart / modern e-commerce)
+  // 3. Referrer Policy
   {
     key: "Referrer-Policy",
-    value: "strict-origin-when-cross-origin",
+    value: "no-referrer-when-downgrade",
   },
-  // 4. Force HTTPS & long-term HSTS
-  {
-    key: "Strict-Transport-Security",
-    value: "max-age=63072000; includeSubDomains; preload",
-  },
-  // 5. Restrict device hardware permissions
+  // 4. Restrict device hardware permissions
   {
     key: "Permissions-Policy",
     value: "camera=(), microphone=(), payment=(), usb=()",
   },
-  // 6. XSS Auditor
+  // 5. XSS Auditor
   {
     key: "X-XSS-Protection",
     value: "1; mode=block",
   },
-  // 7. Enable DNS prefetching for fast produce CDNs
+  // 6. Enable DNS prefetching for fast produce CDNs
   {
     key: "X-DNS-Prefetch-Control",
     value: "on",
   },
-  // 8. Cross-Origin Opener isolation
+  // 7. Cross-Origin Opener isolation
   {
     key: "Cross-Origin-Opener-Policy",
     value: "same-origin-allow-popups",
   },
-  // 9. Content Security Policy (relaxed for trusted produce Unsplash photos & inline Next styles)
+  // 8. Content Security Policy (allows all image sources data, blob, https, http)
   {
     key: "Content-Security-Policy",
     value: [
       "default-src 'self'",
       "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
       "style-src 'self' 'unsafe-inline'",
-      "img-src 'self' data: blob: https://images.unsplash.com https://placehold.co",
+      "img-src 'self' data: blob: https: http:",
       "font-src 'self' data:",
-      "connect-src 'self'",
+      "connect-src 'self' https: http:",
       "frame-ancestors 'self'",
     ].join("; "),
   },
@@ -60,15 +55,14 @@ const nextConfig: NextConfig = {
   serverExternalPackages: ["@prisma/client", "prisma"],
   images: {
     unoptimized: true,
-    formats: ["image/avif", "image/webp"],
     remotePatterns: [
       {
         protocol: "https",
-        hostname: "images.unsplash.com",
+        hostname: "**",
       },
       {
-        protocol: "https",
-        hostname: "placehold.co",
+        protocol: "http",
+        hostname: "**",
       },
     ],
   },
